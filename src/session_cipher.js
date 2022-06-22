@@ -156,10 +156,8 @@ class SessionCipher {
                     plaintext
                 };
             } catch(e) {
-                if (e.name == "MessageCounterError") {
-                    break;
-                }
                 errs.push(e);
+                if (e.name == "MessageCounterError") break;
             }
         }
         console.error("Failed to decrypt message with any known session...");
