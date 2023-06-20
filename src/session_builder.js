@@ -4,7 +4,7 @@
 const BaseKeyType = require('./base_key_type');
 const ChainType = require('./chain_type');
 const SessionRecord = require('./session_record');
-const crypto = require('./crypto');
+const crypto = require('./crypto_async');
 const curve = require('./curve');
 const errors = require('./errors');
 const queueJob = require('./queue_job');
@@ -25,12 +25,12 @@ class SessionBuilder {
                 throw new errors.UntrustedIdentityKeyError(this.addr.id, device.identityKey);
             }
             curve.verifySignature(device.identityKey, device.signedPreKey.publicKey,
-                                  device.signedPreKey.signature);
+                device.signedPreKey.signature);
             const baseKey = curve.generateKeyPair();
             const devicePreKey = device.preKey && device.preKey.publicKey;
             const session = await this.initSession(true, baseKey, undefined, device.identityKey,
-                                                   devicePreKey, device.signedPreKey.publicKey,
-                                                   device.registrationId);
+                devicePreKey, device.signedPreKey.publicKey,
+                device.registrationId);
             session.pendingPreKey = {
                 signedKeyId: device.signedPreKey.keyId,
                 baseKey: baseKey.pubKey
@@ -41,8 +41,13 @@ class SessionBuilder {
             let record = await this.storage.loadSession(fqAddr);
             if (!record) {
                 record = new SessionRecord();
-            } 
+            }
+            const openSession = record.getOpenSession();
             record.archiveCurrentState();
+            if (!Util.isEqual(openSession.indexInfo.remoteIdentityKey, session.indexInfo.remoteIdentityKey)) {
+                console.warn("Deleting all sessions because identity has changed");
+                record.deleteAllSessions();
+            }
             record.updateSessionState(session);
             await this.storage.storeSession(fqAddr, record);
         });
@@ -57,32 +62,35 @@ class SessionBuilder {
             // This just means we haven't replied.
             return;
         }
-        const preKeyPair = await this.storage.loadPreKey(message.preKeyId);
-        if (message.preKeyId && !preKeyPair) {
-            throw new errors.PreKeyError('Invalid PreKey ID');
-        }   
-        const signedPreKeyPair = await this.storage.loadSignedPreKey(message.signedPreKeyId);
+        const [preKeyPair, signedPreKeyPair] = await Promise.all([
+            this.storage.loadPreKey(message.preKeyId),
+            this.storage.loadSignedPreKey(message.signedPreKeyId)
+        ]);
         const existingOpenSession = record.getOpenSession();
-        if (!signedPreKeyPair) { 
+        if (!signedPreKeyPair) {
             if (existingOpenSession && existingOpenSession.currentRatchet) return;
-            else throw new errors.PreKeyError("Missing SignedPreKey");
-        }   
+            throw new errors.PreKeyError("Missing Signed PreKey for PreKeyWhisperMessage");
+        }
         if (existingOpenSession) {
             record.archiveCurrentState();
         }
+        if (message.preKeyId && !preKeyPair) {
+            throw new errors.PreKeyError("Invalid PreKey ID");
+        }
         const session = await this.initSession(false, preKeyPair, signedPreKeyPair,
-                                                 message.identityKey, message.baseKey,
-                                                 undefined, message.registrationId);
+            message.identityKey, message.baseKey,
+            undefined, message.registrationId);
         if (existingOpenSession && session && !Util.isEqual(existingOpenSession.indexInfo.remoteIdentityKey, session.indexInfo.remoteIdentityKey)) {
+            console.warn("Deleting all sessions because identity has changed");
             record.deleteAllSessions();
         }
         record.updateSessionState(session);
-        
+        // this.storage.saveIdentity
         return message.preKeyId;
     }
 
     async initSession(isInitiator, ourEphemeralKey, ourSignedKey, theirIdentityPubKey,
-                      theirEphemeralPubKey, theirSignedPubKey, registrationId) {
+        theirEphemeralPubKey, theirSignedPubKey, registrationId) {
         if (isInitiator) {
             if (ourSignedKey) {
                 throw new Error("Invalid call to initSession");
@@ -119,8 +127,8 @@ class SessionBuilder {
             const a4 = curve.calculateAgreement(theirEphemeralPubKey, ourEphemeralKey.privKey);
             sharedSecret.set(new Uint8Array(a4), 32 * 4);
         }
-        const masterKey = crypto.deriveSecrets(Buffer.from(sharedSecret), Buffer.alloc(32),
-                                               Buffer.from("WhisperText"));
+        const masterKey = await crypto.deriveSecrets(Buffer.from(sharedSecret), Buffer.alloc(32),
+            Buffer.from("WhisperText"));
         const session = SessionRecord.createEntry();
         session.registrationId = registrationId;
         session.currentRatchet = {
@@ -141,15 +149,15 @@ class SessionBuilder {
             // If we're initiating we go ahead and set our first sending ephemeral key now,
             // otherwise we figure it out when we first maybeStepRatchet with the remote's
             // ephemeral key
-            this.calculateSendingRatchet(session, theirSignedPubKey);
+            await this.calculateSendingRatchet(session, theirSignedPubKey);
         }
         return session;
     }
 
-    calculateSendingRatchet(session, remoteKey) {
+    async calculateSendingRatchet(session, remoteKey) {
         const ratchet = session.currentRatchet;
         const sharedSecret = curve.calculateAgreement(remoteKey, ratchet.ephemeralKeyPair.privKey);
-        const masterKey = crypto.deriveSecrets(sharedSecret, ratchet.rootKey, Buffer.from("WhisperRatchet"));
+        const masterKey = await crypto.deriveSecrets(sharedSecret, ratchet.rootKey, Buffer.from("WhisperRatchet"));
         session.addChain(ratchet.ephemeralKeyPair.pubKey, {
             messageKeys: {},
             chainKey: {
