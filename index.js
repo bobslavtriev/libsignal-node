@@ -1,6 +1,5 @@
 'use strict';
 
-exports.crypto_async = require('./src/crypto_async');
 exports.crypto = require('./src/crypto');
 exports.curve = require('./src/curve');
 exports.keyhelper = require('./src/keyhelper');
