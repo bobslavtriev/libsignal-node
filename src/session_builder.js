@@ -44,7 +44,7 @@ class SessionBuilder {
             }
             const openSession = record.getOpenSession();
             record.archiveCurrentState();
-            if (!Util.isEqual(openSession.indexInfo.remoteIdentityKey, session.indexInfo.remoteIdentityKey)) {
+            if (openSession && session && !Util.isEqual(openSession.indexInfo.remoteIdentityKey, session.indexInfo.remoteIdentityKey)) {
                 console.warn("Deleting all sessions because identity has changed");
                 record.deleteAllSessions();
             }
