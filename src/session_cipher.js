@@ -22,7 +22,6 @@ function assertBuffer(value) {
 
 
 class SessionCipher {
-
     constructor(storage, protocolAddress) {
         if (!(protocolAddress instanceof ProtocolAddress)) {
             throw new TypeError("protocolAddress must be a ProtocolAddress");
@@ -190,7 +189,6 @@ class SessionCipher {
                 // was the most current.  Simply make a note of it and continue.  If our
                 // actual open session is for reason invalid, that must be handled via
                 // a full SessionError response.
-                console.warn("Decrypted message with closed session.");
             }
             // this.storage.saveIdentity
             record.updateSessionState(result.session);
@@ -222,7 +220,6 @@ class SessionCipher {
 
             const openSession = record.getOpenSession();
             if (session && openSession && !Util.isEqual(session.indexInfo.remoteIdentityKey, openSession.indexInfo.remoteIdentityKey)) {
-                console.warn("Promote the old session and update identity");
                 record.archiveCurrentState();
                 record.openSession(session);
                 // this.storage.saveIdentity
