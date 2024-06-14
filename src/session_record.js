@@ -152,7 +152,6 @@ class SessionEntry {
 
 }
 
-
 const migrations = [{
     version: 'v1',
     migrate: function migrateV1(data) {
@@ -166,7 +165,6 @@ const migrations = [{
         }
     }
 }];
-
 
 class SessionRecord {
     static createEntry() {

@@ -18,7 +18,6 @@ function assertBuffer(value) {
     return value;
 }
 
-
 class SessionCipher {
     constructor(storage, protocolAddress) {
         if (!(protocolAddress instanceof ProtocolAddress)) {
@@ -80,21 +79,26 @@ class SessionCipher {
             if (chain.chainType === ChainType.RECEIVING) {
                 throw new Error("Tried to encrypt on a receiving chain");
             }
+
             this.fillMessageKeys(chain, chain.chainKey.counter + 1);
-            const keys = crypto.deriveSecrets(chain.messageKeys[chain.chainKey.counter],
-                Buffer.alloc(32), Buffer.from("WhisperMessageKeys"));
-                delete chain.messageKeys[chain.chainKey.counter];
-                const msg = protobufs.WhisperMessage.create();
-                msg.ephemeralKey = session.currentRatchet.ephemeralKeyPair.pubKey;
-                msg.counter = chain.chainKey.counter;
-                msg.previousCounter = session.currentRatchet.previousCounter;
-                msg.ciphertext = crypto.encrypt(keys[0], data, keys[2].slice(0, 16));
-                const msgBuf = protobufs.WhisperMessage.encode(msg).finish();
-                const macInput = Buffer.alloc(msgBuf.byteLength + (33 * 2) + 1);
-                macInput.set(ourIdentityKey.pubKey);
-                macInput.set(session.indexInfo.remoteIdentityKey, 33);
-                macInput[33 * 2] = this._encodeTupleByte(VERSION, VERSION); // 51
+
+            const keys = crypto.deriveSecrets(chain.messageKeys[chain.chainKey.counter], Buffer.alloc(32), Buffer.from("WhisperMessageKeys"));
+
+            delete chain.messageKeys[chain.chainKey.counter];
+
+            const msg = protobufs.WhisperMessage.create();
+            msg.ephemeralKey = session.currentRatchet.ephemeralKeyPair.pubKey;
+            msg.counter = chain.chainKey.counter;
+            msg.previousCounter = session.currentRatchet.previousCounter;
+            msg.ciphertext = crypto.encrypt(keys[0], data, keys[2].slice(0, 16));
+
+            const msgBuf = protobufs.WhisperMessage.encode(msg).finish();
+            const macInput = Buffer.alloc(msgBuf.byteLength + (33 * 2) + 1);
+            macInput.set(ourIdentityKey.pubKey);
+            macInput.set(session.indexInfo.remoteIdentityKey, 33);
+            macInput[33 * 2] = this._encodeTupleByte(VERSION, VERSION); // 51
             macInput.set(msgBuf, (33 * 2) + 1);
+
             const mac = crypto.calculateMAC(keys[1], macInput);
             const result = Buffer.alloc(msgBuf.byteLength + 9);
             result[0] = this._encodeTupleByte(VERSION, VERSION);
