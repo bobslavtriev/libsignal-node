@@ -1,5 +1,3 @@
-// vim: ts=4:sw=4
-
 const BaseKeyType = require('./base_key_type');
 
 const CLOSED_SESSIONS_MAX = 40;
@@ -10,7 +8,6 @@ function assertBuffer(value) {
         throw new TypeError("Buffer required");
     }
 }
-
 
 class SessionEntry {
     constructor() {
