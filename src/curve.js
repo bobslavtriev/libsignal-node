@@ -1,4 +1,3 @@
-
 'use strict';
 
 const curveJs = require('curve25519-js');

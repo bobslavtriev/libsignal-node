@@ -1,4 +1,3 @@
-
 'use strict';
 
 const BaseKeyType = require('./base_key_type');
@@ -10,9 +9,7 @@ const errors = require('./errors');
 const queueJob = require('./queue_job');
 const Util = require('./util');
 
-
 class SessionBuilder {
-
     constructor(storage, protocolAddress) {
         this.addr = protocolAddress;
         this.storage = storage;
@@ -24,13 +21,10 @@ class SessionBuilder {
             if (!await this.storage.isTrustedIdentity(this.addr.id, device.identityKey)) {
                 throw new errors.UntrustedIdentityKeyError(this.addr.id, device.identityKey);
             }
-            curve.verifySignature(device.identityKey, device.signedPreKey.publicKey,
-                device.signedPreKey.signature);
+            curve.verifySignature(device.identityKey, device.signedPreKey.publicKey, device.signedPreKey.signature);
             const baseKey = curve.generateKeyPair();
             const devicePreKey = device.preKey && device.preKey.publicKey;
-            const session = await this.initSession(true, baseKey, undefined, device.identityKey,
-                devicePreKey, device.signedPreKey.publicKey,
-                device.registrationId);
+            const session = await this.initSession(true, baseKey, undefined, device.identityKey, devicePreKey, device.signedPreKey.publicKey, device.registrationId);
             session.pendingPreKey = {
                 signedKeyId: device.signedPreKey.keyId,
                 baseKey: baseKey.pubKey
@@ -45,7 +39,6 @@ class SessionBuilder {
             const openSession = record.getOpenSession();
             record.archiveCurrentState();
             if (openSession && session && !Util.isEqual(openSession.indexInfo.remoteIdentityKey, session.indexInfo.remoteIdentityKey)) {
-                console.warn("Deleting all sessions because identity has changed");
                 record.deleteAllSessions();
             }
             record.updateSessionState(session);
@@ -77,11 +70,8 @@ class SessionBuilder {
         if (message.preKeyId && !preKeyPair) {
             throw new errors.PreKeyError("Invalid PreKey ID");
         }
-        const session = await this.initSession(false, preKeyPair, signedPreKeyPair,
-            message.identityKey, message.baseKey,
-            undefined, message.registrationId);
+        const session = await this.initSession(false, preKeyPair, signedPreKeyPair, message.identityKey, message.baseKey, undefined, message.registrationId);
         if (existingOpenSession && session && !Util.isEqual(existingOpenSession.indexInfo.remoteIdentityKey, session.indexInfo.remoteIdentityKey)) {
-            console.warn("Deleting all sessions because identity has changed");
             record.deleteAllSessions();
         }
         record.updateSessionState(session);
