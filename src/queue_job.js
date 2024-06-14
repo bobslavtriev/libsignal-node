@@ -46,8 +46,6 @@ module.exports = function(bucket, awaitable) {
         Object.defineProperty(awaitable, 'name', {writable: true});
         if (typeof bucket === 'string') {
             awaitable.name = bucket;
-        } else {
-            console.warn("Unhandled bucket type (for naming):", typeof bucket, bucket);
         }
     }
     let inactive;
