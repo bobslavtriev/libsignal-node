@@ -1,10 +1,7 @@
-// vim: ts=4:sw=4
-
 'use strict';
 
 const nodeCrypto = require('crypto');
 const assert = require('assert');
-
 
 function assertBuffer(value) {
     if (!(value instanceof Buffer)) {
@@ -12,7 +9,6 @@ function assertBuffer(value) {
     }
     return value;
 }
-
 
 function encrypt(key, data, iv) {
     assertBuffer(key);
@@ -22,7 +18,6 @@ function encrypt(key, data, iv) {
     return Buffer.concat([cipher.update(data), cipher.final()]);
 }
 
-
 function decrypt(key, data, iv) {
     assertBuffer(key);
     assertBuffer(data);
@@ -30,7 +25,6 @@ function decrypt(key, data, iv) {
     const decipher = nodeCrypto.createDecipheriv('aes-256-cbc', key, iv);
     return Buffer.concat([decipher.update(data), decipher.final()]);
 }
-
 
 function calculateMAC(key, data) {
     assertBuffer(key);
@@ -40,14 +34,12 @@ function calculateMAC(key, data) {
     return Buffer.from(hmac.digest());
 }
 
-
 function hash(data) {
     assertBuffer(data);
     const sha512 = nodeCrypto.createHash('sha512');
     sha512.update(data);
     return sha512.digest();
 }
-
 
 // Salts always end up being 32 bytes
 function deriveSecrets(input, salt, info, chunks) {
