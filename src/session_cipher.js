@@ -1,5 +1,3 @@
-// vim: ts=4:sw=4:expandtab
-
 const ChainType = require('./chain_type');
 const ProtocolAddress = require('./protocol_address');
 const SessionBuilder = require('./session_builder');
